@@ -27,7 +27,7 @@ const HelpMessage string = "Usage:\n" +
 							"\t-t target: IP address of target machine. Must be in IPv4 format.\n" +
 							"\t-b broadcast: broadcast IP address. Must be in IPv4 format.\n" +
 							"\t-w workers: amount of workers executing smurf attack. Defaults to 1.\n" +
-							"\t-n jobs: number of jobs per worker. Defaults to 1.\n"							
+							"\t-j jobs: number of jobs per worker. Defaults to 1.\n"							
 							
 
 func createHeader(header *layers.IPv4, src net.IP, dst net.IP) {
